@@ -1,0 +1,15 @@
+# Personal data written by the tool (describes one person's phone)
+backups/
+json/
+excel/
+logs/
+icons/
+*.ini
+
+# Local-only
+CLAUDE.md
+text/
+*.code-workspace
+__pycache__/
+.DS_Store
+~$*.xlsx
