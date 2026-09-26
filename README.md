@@ -51,6 +51,27 @@ python iphone_organizer.py
 Every app with the same Target Folder name ends up in one folder. Decimal Target Order values slot
 an app between others (3.5 goes between 3 and 4).
 
+### Let an AI assistant do the work
+
+You don't have to edit the workbook yourself. Once you've exported it, an AI coding assistant
+such as [Claude Code](https://claude.com/claude-code) can take instructions in plain English and
+handle the rest. It finds the right apps, fills in the Target columns, checks the result and
+pushes it when you say so. Open the assistant in this project's folder and give it orders like:
+
+- "Make a Travel folder first on page 2 with my airline and cruise apps."
+- "Put all my Microsoft apps in one folder, but leave Edge where it is."
+- "Find my food delivery apps and put them in a folder called Gig after Portuguese."
+- "Move Authy to page 3 without shifting everything else."
+- "Show me what would change before you push anything."
+
+The assistant reads [AGENTS.md](AGENTS.md), which explains how to work safely with this tool:
+edit a new copy of the workbook, do a dry run, and push only when you approve. You stay in
+charge. It asks when an instruction is ambiguous, for example which borderline apps count as
+"games". Every push is backed up, so Restore undoes it.
+
+You can also give it standing rules to remember, like "page 1 is off limits unless I say so" or
+"new folders go right after the last one I created".
+
 ### Without the window
 
 ```
