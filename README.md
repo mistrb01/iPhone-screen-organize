@@ -82,7 +82,9 @@ once before organizing, since Apple could restrict this service in a future iOS 
 
 ## Output folders
 
-The tool creates these next to the script. They describe your phone, so they are git-ignored:
+The tool creates these in the **Output folder** set at the top of the window, which is saved as
+`output_dir` in `iphone_organizer.ini`. If it's blank, they go next to the script. They describe
+your phone, so they are git-ignored:
 
 | Folder | Contents |
 | --- | --- |

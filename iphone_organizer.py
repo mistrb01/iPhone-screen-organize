@@ -41,11 +41,6 @@ from pymobiledevice3.services.springboard import SpringBoardServicesService
 import layout
 
 HERE = Path(__file__).resolve().parent
-LOG_DIR = HERE / "logs"
-JSON_DIR = HERE / "json"
-EXCEL_DIR = HERE / "excel"
-BACKUP_DIR = HERE / "backups"
-ICON_DIR = HERE / "icons"
 INI_PATH = HERE / "iphone_organizer.ini"
 SECTION = "iphone_organizer"
 PATH_RE = re.compile(r"(/[^\s'\"]+\.(?:xlsx|csv|txt|json|plist|docx|zip))")
@@ -106,8 +101,12 @@ class App:
         self.stop_flag = threading.Event()
         self.busy = False
         self.icon_cache: dict[str, tk.PhotoImage] = {}
-        LOG_DIR.mkdir(exist_ok=True)
-        self.log_path = LOG_DIR / f"{ts()}-iphone_organizer.txt"
+        self.output_var = tk.StringVar()
+        self.workbook_var = tk.StringVar()
+        self.backup_var = tk.StringVar()
+        self.icons_var = tk.BooleanVar(value=True)
+        self._load_config(quiet=True)
+        self.log_path = self._dir("logs") / f"{ts()}-iphone_organizer.txt"
         self.log_file = open(self.log_path, "a", encoding="utf-8")
 
         root.title("iPhone Home Screen Organizer")
@@ -115,18 +114,18 @@ class App:
 
         fields = ttk.Frame(root, padding=8)
         fields.pack(fill="x")
-        self.workbook_var = tk.StringVar()
-        self.backup_var = tk.StringVar()
-        self.icons_var = tk.BooleanVar(value=True)
-        for r, (label, var, types, start) in enumerate([
-            ("Workbook:", self.workbook_var, [("Excel", "*.xlsx")], EXCEL_DIR),
-            ("Backup to restore:", self.backup_var, [("plist", "*.plist")], BACKUP_DIR),
-        ]):
+        ttk.Label(fields, text="Output folder:").grid(row=0, column=0, sticky="w")
+        ttk.Entry(fields, textvariable=self.output_var, width=100).grid(row=0, column=1, sticky="ew", padx=4)
+        ttk.Button(fields, text="Browse", command=self._browse_output).grid(row=0, column=2)
+        for r, (label, var, types, sub) in enumerate([
+            ("Workbook:", self.workbook_var, [("Excel", "*.xlsx")], "excel"),
+            ("Backup to restore:", self.backup_var, [("plist", "*.plist")], "backups"),
+        ], start=1):
             ttk.Label(fields, text=label).grid(row=r, column=0, sticky="w")
             ttk.Entry(fields, textvariable=var, width=100).grid(row=r, column=1, sticky="ew", padx=4)
-            ttk.Button(fields, text="Browse", command=lambda v=var, t=types, s=start: self._browse(v, t, s)).grid(row=r, column=2)
+            ttk.Button(fields, text="Browse", command=lambda v=var, t=types, d=sub: self._browse(v, t, d)).grid(row=r, column=2)
         ttk.Checkbutton(fields, text="Fetch app icons during export (for the preview)", variable=self.icons_var).grid(
-            row=2, column=1, sticky="w")
+            row=3, column=1, sticky="w")
         fields.columnconfigure(1, weight=1)
 
         self.log_w = scrolledtext.ScrolledText(root, wrap="word", font=("Menlo", 12))
@@ -151,12 +150,12 @@ class App:
         ]:
             ttk.Button(bar, text=text, command=cmd).pack(side="left", padx=2)
 
-        self._load_config(quiet=True)
         if not self.workbook_var.get():
-            newest = sorted(EXCEL_DIR.glob("*-iphone_apps*.xlsx"))
+            newest = sorted(self._dir("excel").glob("*-iphone_apps*.xlsx"))
             if newest:
                 self.workbook_var.set(str(newest[-1]))
         self.log(f"Log file: {self.log_path}")
+        self.log(f"Output folder: {self._dir('')}")
         self.log("Plug in the iPhone and unlock it. Start with Export to Excel.")
 
     # ---------- logging ----------
@@ -197,6 +196,7 @@ class App:
         cfg = configparser.ConfigParser()
         cfg.read(INI_PATH)
         cfg[SECTION] = {
+            "output_dir": self.output_var.get(),
             "workbook": self.workbook_var.get(),
             "backup": self.backup_var.get(),
             "fetch_icons": str(self.icons_var.get()),
@@ -210,16 +210,29 @@ class App:
         cfg.read(INI_PATH)
         if cfg.has_section(SECTION):
             s = cfg[SECTION]
+            self.output_var.set(s.get("output_dir", ""))
             self.workbook_var.set(s.get("workbook", ""))
             self.backup_var.set(s.get("backup", ""))
             self.icons_var.set(s.getboolean("fetch_icons", True))
         if not quiet:
             self.log("Config loaded.")
 
-    def _browse(self, var, types, start):
-        p = filedialog.askopenfilename(initialdir=start, filetypes=types)
+    def _dir(self, name: str) -> Path:
+        """A subfolder of the output folder (blank = next to this script), created if missing."""
+        d = Path(self.output_var.get().strip() or HERE).expanduser() / name
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def _browse(self, var, types, sub):
+        p = filedialog.askopenfilename(initialdir=self._dir(sub), filetypes=types)
         if p:
             var.set(p)
+
+    def _browse_output(self):
+        p = filedialog.askdirectory(initialdir=self._dir(""), mustexist=False)
+        if p:
+            self.output_var.set(p)
+            self.log(f"Output folder: {p}. Click Save Config to keep it. This session's log stays at {self.log_path}")
 
     # ---------- run plumbing ----------
     def _stop(self):
@@ -268,12 +281,10 @@ class App:
         return lockdown, SpringBoardServicesService(lockdown)
 
     def _backup(self, state: list, tag: str) -> Path:
-        BACKUP_DIR.mkdir(exist_ok=True)
-        JSON_DIR.mkdir(exist_ok=True)
         stamp = ts()
-        plist_path = BACKUP_DIR / f"{stamp}-icon_state-{tag}.plist"
+        plist_path = self._dir("backups") / f"{stamp}-icon_state-{tag}.plist"
         plist_path.write_bytes(plistlib.dumps(state, fmt=plistlib.FMT_BINARY))
-        (JSON_DIR / f"{stamp}-icon_state-{tag}.json").write_text(
+        (self._dir("json") / f"{stamp}-icon_state-{tag}.json").write_text(
             json.dumps(state, indent=2, default=to_jsonable), encoding="utf-8")
         self.log(f"Layout backup: {plist_path}")
         return plist_path
@@ -311,8 +322,7 @@ class App:
         self.log("Edit the yellow Target columns, save, then click Preview.")
 
     def _categories(self, bundle_ids: set[str]) -> dict:
-        JSON_DIR.mkdir(exist_ok=True)
-        cached = sorted(JSON_DIR.glob("*-app_categories.json"))
+        cached = sorted(self._dir("json").glob("*-app_categories.json"))
         cats = json.loads(cached[-1].read_text()) if cached else {}
         todo = sorted(b for b in bundle_ids if b not in cats and not b.startswith("com.apple."))
         self.log(f"App Store categories: looking up {len(todo)} (Apple apps and cached ones skipped)...")
@@ -332,14 +342,14 @@ class App:
                 cats[r["bundleId"]] = {"genre": r.get("primaryGenreName"), "genres": r.get("genres", [])}
             for b in batch:
                 cats.setdefault(b, {})
-        path = JSON_DIR / f"{ts()}-app_categories.json"
+        path = self._dir("json") / f"{ts()}-app_categories.json"
         path.write_text(json.dumps(cats, indent=2), encoding="utf-8")
         self.log(f"Categories saved: {path}")
         return cats
 
     async def _fetch_icons(self, sb, bundle_ids: list[str]):
-        ICON_DIR.mkdir(exist_ok=True)
-        todo = [b for b in bundle_ids if not (ICON_DIR / f"{b}.png").exists()]
+        icon_dir = self._dir("icons")
+        todo = [b for b in bundle_ids if not (icon_dir / f"{b}.png").exists()]
         self.log(f"Icons: {len(bundle_ids) - len(todo)} cached, fetching {len(todo)}...")
         for n, bid in enumerate(todo, start=1):
             if self.stop_flag.is_set():
@@ -348,7 +358,7 @@ class App:
             try:
                 png = await sb.get_icon_pngdata(bid)
                 if png:
-                    (ICON_DIR / f"{bid}.png").write_bytes(png)
+                    (icon_dir / f"{bid}.png").write_bytes(png)
             except Exception as e:
                 self.log(f"Icon failed for {bid}: {e}")
             if n % 50 == 0:
@@ -356,7 +366,6 @@ class App:
         self.log("Icons done.")
 
     def _write_workbook(self, rows: list[dict], cats: dict) -> Path:
-        EXCEL_DIR.mkdir(exist_ok=True)
         wb = Workbook()
         ws = wb.active
         ws.title = "Apps"
@@ -402,7 +411,7 @@ class App:
                 c.font = bold if c.row == 1 else big
         how.column_dimensions["A"].width = 130
 
-        path = EXCEL_DIR / f"{ts()}-iphone_apps.xlsx"
+        path = self._dir("excel") / f"{ts()}-iphone_apps.xlsx"
         wb.save(path)
         self.log(f"Workbook: {path}")
         return path
@@ -494,7 +503,7 @@ class App:
         if not bundle_id:
             return None
         if bundle_id not in self.icon_cache:
-            f = ICON_DIR / f"{bundle_id}.png"
+            f = self._dir("icons") / f"{bundle_id}.png"
             try:
                 img = tk.PhotoImage(file=str(f)) if f.exists() else None
                 self.icon_cache[bundle_id] = img.subsample(max(1, img.width() // 48)) if img else None
@@ -661,11 +670,10 @@ class Headless(App):
         self.busy = False
         self.assume_yes = assume_yes
         self.pending_push = None
-        LOG_DIR.mkdir(exist_ok=True)
-        self.log_path = LOG_DIR / f"{ts()}-iphone_organizer.txt"
-        self.log_file = open(self.log_path, "a", encoding="utf-8")
-        self.workbook_var, self.backup_var, self.icons_var = Var(""), Var(""), Var(True)
+        self.output_var, self.workbook_var, self.backup_var, self.icons_var = Var(""), Var(""), Var(""), Var(True)
         self._load_config(quiet=True)
+        self.log_path = self._dir("logs") / f"{ts()}-iphone_organizer.txt"
+        self.log_file = open(self.log_path, "a", encoding="utf-8")
         self.log(f"Log file: {self.log_path}")
 
     def log(self, msg: str):
