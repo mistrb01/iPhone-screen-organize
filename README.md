@@ -91,3 +91,7 @@ The tool creates these next to the script. They describe your phone, so they are
 | `json/` | Readable layout copies and cached App Store categories |
 | `icons/` | App icons pulled from the phone for the preview |
 | `logs/` | A timestamped log of every run |
+
+## License
+
+GPL-3.0, the same license as [pymobiledevice3](https://github.com/doronz88/pymobiledevice3), which this tool is built on. See [LICENSE](LICENSE). You may use, change and share it. If you distribute it or a modified version, you must publish the full source under the GPL too.
