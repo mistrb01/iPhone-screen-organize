@@ -40,6 +40,8 @@ from pymobiledevice3.services.springboard import SpringBoardServicesService
 
 import layout
 
+__version__ = "1.1.0"
+
 HERE = Path(__file__).resolve().parent
 INI_PATH = HERE / "iphone_organizer.ini"
 SECTION = "iphone_organizer"
@@ -109,7 +111,7 @@ class App:
         self.log_path = self._dir("logs") / f"{ts()}-iphone_organizer.txt"
         self.log_file = open(self.log_path, "a", encoding="utf-8")
 
-        root.title("iPhone Home Screen Organizer")
+        root.title(f"iPhone Home Screen Organizer {__version__}")
         root.geometry("1050x650")
 
         fields = ttk.Frame(root, padding=8)
@@ -155,6 +157,7 @@ class App:
             newest = sorted(self._dir("excel").glob("*-iphone_apps*.xlsx"))
             if newest:
                 self.workbook_var.set(str(newest[-1]))
+        self.log(f"iPhone Home Screen Organizer {__version__}")
         self.log(f"Log file: {self.log_path}")
         self.log(f"Output folder: {self._dir('')}")
         self.log("Plug in the iPhone and unlock it. Start with Export to Excel.")
@@ -730,6 +733,7 @@ class Headless(App):
         self._load_config(quiet=True)
         self.log_path = self._dir("logs") / f"{ts()}-iphone_organizer.txt"
         self.log_file = open(self.log_path, "a", encoding="utf-8")
+        self.log(f"iPhone Home Screen Organizer {__version__}")
         self.log(f"Log file: {self.log_path}")
 
     def log(self, msg: str):
@@ -817,6 +821,7 @@ def run_headless(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Organize the iPhone home screen through an Excel round-trip.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--headless", action="store_true", help="run one action without the window")
     parser.add_argument("action", nargs="?", choices=["export", "preview", "push", "restore"])
     parser.add_argument("--workbook", help="workbook for preview/push (default: from the .ini)")
