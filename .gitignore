@@ -13,3 +13,6 @@ text/
 __pycache__/
 .DS_Store
 ~$*.xlsx
+
+# Outreach drafts (not for the repo)
+docs/outreach-drafts.md

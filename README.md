@@ -9,6 +9,8 @@ backup first, and one click restores it.
 
 Tested on an iPhone 15 Pro Max running iOS 27.
 
+![Preview window: the dock and first two pages drawn with real app icons, with a new Music folder highlighted](docs/preview.png)
+
 ## How it works
 
 The phone runs a SpringBoard service that reads and writes the home screen layout. It's the
