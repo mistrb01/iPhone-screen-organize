@@ -56,7 +56,8 @@ an app between others (3.5 goes between 3 and 4).
 You don't have to edit the workbook yourself. Once you've exported it, an AI coding assistant
 such as [Claude Code](https://claude.com/claude-code) can take instructions in plain English and
 handle the rest. It finds the right apps, fills in the Target columns, checks the result and
-pushes it when you say so. Open the assistant in this project's folder and give it orders like:
+pushes it when you say so. The **Use AI** button in the window shows the steps and a ready-to-paste first message with your
+file paths filled in. Open the assistant in this project's folder and give it orders like:
 
 - "Make a Travel folder first on page 2 with my airline and cruise apps."
 - "Put all my Microsoft apps in one folder, but leave Edge where it is."

@@ -142,6 +142,7 @@ class App:
             ("Preview", lambda: self._run(self._prepare, Path(self.workbook_var.get()), False)),
             ("Push to iPhone", lambda: self._run(self._prepare, Path(self.workbook_var.get()), True)),
             ("Restore Backup", lambda: self._run(self._restore, Path(self.backup_var.get()))),
+            ("Use AI", self._show_ai_help),
             ("Stop", self._stop),
             ("Save Config", self._save_config),
             ("Load Config", self._load_config),
@@ -233,6 +234,61 @@ class App:
         if p:
             self.output_var.set(p)
             self.log(f"Output folder: {p}. Click Save Config to keep it. This session's log stays at {self.log_path}")
+
+    # ---------- AI help ----------
+    def _ai_starter_prompt(self) -> str:
+        workbook = self.workbook_var.get() or "(none yet: export one first)"
+        return (
+            f"Read AGENTS.md in this folder first. My latest workbook is {workbook} "
+            f"and my output folder is {self._dir('')}. Ask me how I'd like my iPhone home screen "
+            "organized. Show me a dry run of every change, and don't push anything to my phone "
+            "until I say so."
+        )
+
+    def _show_ai_help(self):
+        win = tk.Toplevel(self.root)
+        win.title("Use an AI assistant")
+        win.geometry("760x680")
+        body = ttk.Frame(win, padding=12)
+        body.pack(fill="both", expand=True)
+
+        def para(text, bold=False):
+            ttk.Label(body, text=text, wraplength=720, justify="left",
+                      font=("Helvetica", 13, "bold" if bold else "normal")).pack(anchor="w", pady=(8, 2))
+
+        para("Let an AI assistant do the organizing", bold=True)
+        para("After you export a workbook, an AI coding assistant such as Claude Code can follow plain-English "
+             "instructions: it finds the apps, fills in the Target columns, shows you a dry run, and pushes only "
+             "when you approve. Every push is backed up, so Restore Backup undoes it.")
+        para("1. Open your AI assistant in this folder:", bold=True)
+        row = ttk.Frame(body)
+        row.pack(fill="x")
+        ttk.Label(row, text=str(HERE), font=("Menlo", 11)).pack(side="left")
+        ttk.Button(row, text="Open Folder", command=lambda: subprocess.run(
+            ["open", str(HERE)] if sys.platform == "darwin" else ["explorer", str(HERE)])).pack(side="left", padx=8)
+        para("2. Paste this as your first message:", bold=True)
+        box = tk.Text(body, height=6, wrap="word", font=("Menlo", 11))
+        box.insert("1.0", self._ai_starter_prompt())
+        box.pack(fill="x")
+
+        def copy():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(box.get("1.0", "end-1c"))
+            copied.set("Copied.")
+
+        copied = tk.StringVar()
+        row2 = ttk.Frame(body)
+        row2.pack(fill="x", pady=4)
+        ttk.Button(row2, text="Copy", command=copy).pack(side="left")
+        ttk.Label(row2, textvariable=copied).pack(side="left", padx=8)
+        para("3. Then give it instructions, for example:", bold=True)
+        para("  \u2022 Make a Travel folder first on page 2 with my airline and cruise apps.\n"
+             "  \u2022 Put all my Microsoft apps in one folder, but leave Edge where it is.\n"
+             "  \u2022 Find my games and put them in a Games folder after the last folder.\n"
+             "  \u2022 Move Authy to page 3 without shifting everything else.\n"
+             "  \u2022 Page 1 is off limits unless I name it. Remember that.")
+        para("AGENTS.md in this folder tells the assistant how to work with this tool safely.")
+        ttk.Button(body, text="Close", command=win.destroy).pack(anchor="e", pady=(12, 0))
 
     # ---------- run plumbing ----------
     def _stop(self):
